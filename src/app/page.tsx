@@ -1,103 +1,164 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useState, useEffect } from 'react';
+import { SidebarProvider } from '@/components/ui/sidebar';
+import { SidebarInset } from '@/components/ui/sidebar';
+import { SidebarTrigger } from '@/components/ui/sidebar';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { motion } from 'framer-motion';
+import { AppSidebar } from '@/components/app-sidebar';
+import { SettingsPanel, SettingsPanelProvider, SettingsPanelTrigger } from '@/components/settings-panel'; // <-- import Trigger
+import { ChatMessage } from '@/components/chat-message';
+import ModelSelector from '@/components/model-selector';
+import ThemeToggle from '@/components/theme-toggle';
+import TypingIndicator from '@/components/typing-indicator';
+import useChat from '@/hooks/use-chat'; // make sure this hook exposes loadSession
+
+type ChatSession = {
+  id: string;
+  title: string;
+  lastActive: string;
+};
+
+export default function Page() {
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [activeSession, setActiveSession] = useState<string>('default');
+  const [search, setSearch] = useState('');
+  const [model, setModel] = useState('llama3.1:latest');
+  const [input, setInput] = useState('');
+  const { messages, send, thinking } = useChat();
+
+  // load / persist sessions
+  useEffect(() => {
+    const stored = localStorage.getItem('chat_sessions');
+    if (stored) setSessions(JSON.parse(stored));
+    else setSessions([{ id: 'default', title: 'Default', lastActive: new Date().toISOString() }]);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('chat_sessions', JSON.stringify(sessions));
+  }, [sessions]);
+
+  const filteredSessions = sessions.filter(s =>
+    s.title.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const handleNewChat = () => {
+    const id = `chat-${Date.now()}`;
+    const session = { id, title: `Chat ${sessions.length + 1}`, lastActive: new Date().toISOString() };
+    setSessions([session, ...sessions]);
+    setActiveSession(id);
+    loadSession(id);
+  };
+
+  const handleSelectSession = (id: string) => {
+    setActiveSession(id);
+    loadSession(id);
+  };
+
+  // Move this function inside the component so it can access setSessions
+  function loadSession(id: string) {
+    setSessions((prev: ChatSession[]) =>
+      prev.map((s: ChatSession) =>
+        s.id === id ? { ...s, lastActive: new Date().toISOString() } : s
+      )
+    );
+  }
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <SettingsPanelProvider>
+      <SidebarProvider>
+        {/* LEFT sidebar */}
+        <AppSidebar>
+          <div className="flex flex-col h-full">
+            <div className="p-3 border-b">
+              <Button onClick={handleNewChat} className="w-full">+ New Chat</Button>
+            </div>
+            <div className="p-2">
+              <Input
+                placeholder="Search chats..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+            <ScrollArea className="flex-1 px-2">
+              {filteredSessions.map(s => (
+                <div
+                  key={s.id}
+                  className={`p-2 mb-1 rounded cursor-pointer text-sm ${activeSession === s.id ? 'bg-muted' : 'hover:bg-muted/50'}`}
+                  onClick={() => handleSelectSession(s.id)}
+                >
+                  <div className="font-medium truncate">{s.title}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(s.lastActive).toLocaleString()}
+                  </div>
+                </div>
+              ))}
+            </ScrollArea>
+            <div className="p-3 border-t flex gap-2">
+              {/* Use SettingsPanelTrigger for mobile, fallback to button for desktop */}
+              <SettingsPanelTrigger />
+              <Button variant="ghost" className="w-full hidden lg:block">Settings</Button>
+            </div>
+          </div>
+        </AppSidebar>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+        {/* MAIN area */}
+        <SidebarInset>
+          <header className="flex justify-between p-4 border-b">
+            <SidebarTrigger />
+            <ThemeToggle />
+          </header>
+
+          <div className="flex flex-col h-[calc(100vh-4rem)]">
+            <div className="p-4 border-b">
+              <ModelSelector onChange={setModel} />
+            </div>
+
+            <ScrollArea className="flex-1 p-4 space-y-4">
+              {messages.map((m, i) => (
+                <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                  <ChatMessage isUser={m.role === 'user'}>{m.content}</ChatMessage>
+                </motion.div>
+              ))}
+              {thinking && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                  <ChatMessage isUser={false} thinking={true}>Thinking...</ChatMessage>
+                </motion.div>
+              )}
+            </ScrollArea>
+
+            <div className="p-4 border-t">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Type /pull mistral-nemo to fetch..."
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={async e => {
+                    if (e.key === 'Enter') {
+                      if (input.startsWith('/pull')) {
+                        const modelName = input.split(' ')[1];
+                        await fetch('/api/ollama/pull', { method: 'POST', body: JSON.stringify({ model: modelName }) });
+                        window.location.reload(); // refresh model list
+                      } else {
+                        send(input, model, activeSession);
+                      }
+                      setInput('');
+                    }
+                  }}
+                />
+                <Button onClick={() => { send(input, model, activeSession); setInput(''); }}>Send</Button>
+              </div>
+            </div>
+          </div>
+        </SidebarInset>
+
+        {/* RIGHT settings panel */}
+        <SettingsPanel />
+      </SidebarProvider>
+    </SettingsPanelProvider>
   );
 }
+
