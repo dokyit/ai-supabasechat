@@ -18,7 +18,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { RiSkipLeftLine, RiSkipRightLine } from "@remixicon/react";
+import { RiSkipLeftLine, RiSkipRightLine, RiMicLine } from "@remixicon/react";
 
 const SIDEBAR_COOKIE_NAME = "sidebar:state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
