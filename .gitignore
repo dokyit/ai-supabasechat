@@ -43,3 +43,6 @@ next-env.d.ts
 # Ignore large files
 voice-backend/venv/
 voice-backend/asset/*.safetensors
+voice-backend/asset/Embed.safetensors
+voice-backend/venv/lib/python3.11/site-packages/torch/lib/libtorch_cpu.dylib
+voice-backend/asset/gpt/model.safetensors
